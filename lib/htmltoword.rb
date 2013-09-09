@@ -4,7 +4,14 @@ require "htmltoword/htmltoword_helper"
 require "action_controller"
 require "action_view"
 require "nokogiri"
-require "zip/zip"
+begin
+  require "zip"
+  # rescue can be removed when everyone is on Rubyzip 1.x
+rescue LoadError
+  require "zip/zip"
+  Zip::File         = Zip::ZipFile
+  Zip::OutputStream = Zip::ZipOutputStream
+end
 
 module Htmltoword
   def self.root
@@ -41,7 +48,7 @@ module Htmltoword
     def initialize(template_path, file_name)
       @file_name = file_name
       @replaceable_files = {}
-      @template_zip = Zip::ZipFile.open(template_path)
+      @template_zip = Zip::File.open(template_path)
     end
 
     def file_name
@@ -58,7 +65,7 @@ module Htmltoword
     #
     def save
       output_file = Tempfile.new([file_name, FILE_EXTENSION], type: 'application/zip')
-      Zip::ZipOutputStream.open(output_file.path) do |out|
+      Zip::OutputStream.open(output_file.path) do |out|
         @template_zip.each do |entry|
           out.put_next_entry entry.name
           if @replaceable_files[entry.name]
